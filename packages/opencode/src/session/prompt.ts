@@ -56,6 +56,7 @@ import { SessionTable } from "@opencode-ai/core/session/sql"
 import { SessionReminders } from "./reminders"
 import { SessionTools } from "./tools"
 import { LLMEvent } from "@opencode-ai/llm"
+import { Orchestrator } from "@/orchestrator"
 
 // @ts-ignore
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -1137,6 +1138,16 @@ const layer = Layer.effect(
               providerID: lastUser.model.providerID,
               history: msgs,
             }).pipe(Effect.ignore, Effect.forkIn(scope))
+
+          // The orchestrator agent drives the claude/codex CLIs instead of a configured model.
+          const orchestratorAgent = yield* agents.get(lastUser.agent)
+          if (orchestratorAgent && Orchestrator.isOrchestrator(orchestratorAgent) && !tasks.length) {
+            yield* Orchestrator.run(
+              { sessions, spawner, events },
+              { sessionID, lastUser, msgs, agent: orchestratorAgent, directory: ctx.directory, root: ctx.worktree },
+            )
+            break
+          }
 
           const model = yield* getModel(lastUser.model.providerID, lastUser.model.modelID, sessionID)
           const task = tasks.pop()

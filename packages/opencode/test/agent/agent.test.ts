@@ -55,6 +55,7 @@ it.instance("returns default native agents when no config", () =>
     expect(names).toContain("compaction")
     expect(names).toContain("title")
     expect(names).toContain("summary")
+    expect(names).toContain("orchestrator")
   }),
 )
 
@@ -749,6 +750,7 @@ it.instance(
       agent: {
         build: { disable: true },
         plan: { disable: true },
+        orchestrator: { disable: true },
       },
     },
   },

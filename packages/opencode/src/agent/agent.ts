@@ -179,6 +179,15 @@ const layer = Layer.effect(
             mode: "primary",
             native: true,
           },
+          orchestrator: {
+            name: "orchestrator",
+            description:
+              "Codex routes and builds; Claude plans and reviews. Runs the claude and codex CLIs instead of the configured model.",
+            options: { orchestrator: true, maxReviewRounds: 3 },
+            permission: Permission.merge(defaults, user),
+            mode: "primary",
+            native: true,
+          },
           general: {
             name: "general",
             description: `General-purpose agent for researching complex questions and executing multi-step tasks. Use this agent to execute multiple units of work in parallel.`,

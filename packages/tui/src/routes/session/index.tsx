@@ -1713,6 +1713,7 @@ function ToolPart(props: { last: boolean; part: ToolPart; message: AssistantMess
   // Hide tool if showDetails is false and tool completed successfully
   const shouldHide = createMemo(() => {
     if (ctx.showDetails()) return false
+    if (display() === "orchestrator") return false
     if (props.part.state.status !== "completed") return false
     return true
   })
@@ -1779,6 +1780,9 @@ function ToolPart(props: { last: boolean; part: ToolPart; message: AssistantMess
         </Match>
         <Match when={display() === "skill"}>
           <Skill {...toolprops} />
+        </Match>
+        <Match when={display() === "orchestrator"}>
+          <OrchestratorPhase {...toolprops} />
         </Match>
         <Match when={true}>
           <GenericTool {...toolprops} />
@@ -2099,6 +2103,44 @@ function Shell(props: ToolProps) {
         </InlineTool>
       </Match>
     </Switch>
+  )
+}
+
+function OrchestratorPhase(props: ToolProps) {
+  const { theme } = useTheme()
+  const ctx = use()
+  const isRunning = createMemo(() => props.part.state.status === "running")
+  const title = createMemo(() => stringValue(props.input.title) ?? props.tool)
+  const output = createMemo(() => stripAnsi(stringValue(props.metadata.output)?.trim() ?? ""))
+  const [expanded, setExpanded] = createSignal(false)
+  const maxLines = createMemo(() => (isRunning() ? 8 : 4))
+  const maxChars = createMemo(() => maxLines() * Math.max(20, ctx.width - 6))
+  // While running, show the tail of the log so the latest activity stays visible.
+  const collapsed = createMemo(() => {
+    const lines = output().split("\n")
+    const tail = isRunning() ? lines.slice(-maxLines()).join("\n") : output()
+    return collapseToolOutput(tail, maxLines(), maxChars())
+  })
+  const limited = createMemo(() => (expanded() ? output() : collapsed().output))
+  const overflow = createMemo(() => collapsed().overflow || (isRunning() && output().split("\n").length > maxLines()))
+
+  return (
+    <BlockTool title={`# ${title()}`} part={props.part} onClick={overflow() ? () => setExpanded((prev) => !prev) : undefined}>
+      <box gap={1}>
+        <Show when={isRunning()}>
+          <Spinner color={theme.text}>{title()}</Spinner>
+        </Show>
+        <Show when={limited()}>
+          <text fg={theme.text}>{limited()}</text>
+        </Show>
+        <Show when={!isRunning() && props.output && props.output !== output()}>
+          <text fg={theme.textMuted}>→ {props.output!.split("\n")[0]}</text>
+        </Show>
+        <Show when={overflow()}>
+          <text fg={theme.textMuted}>{expanded() ? "Click to collapse" : "Click to expand"}</text>
+        </Show>
+      </box>
+    </BlockTool>
   )
 }
 
@@ -2641,6 +2683,7 @@ const toolDisplays = new Set([
 ])
 
 export function toolDisplay(tool: string) {
+  if (tool.startsWith("orchestrator_")) return "orchestrator"
   return toolDisplays.has(tool) ? tool : "generic"
 }
 
